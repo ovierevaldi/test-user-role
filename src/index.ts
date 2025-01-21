@@ -2,10 +2,23 @@ import express, { Request, Response } from 'express';
 import { ApolloServer } from '@apollo/server';
 import { expressMiddleware } from '@apollo/server/express4';
 import cors from 'cors';
+import 'reflect-metadata';
+import { AppDataSource } from './datasource';
+import { buildSchema } from 'type-graphql';
+import AccountResolvers from './Resolvers/Account-resolvers';
+import customAuthChecker from './auth-checker';
 
 // REST API Endpoint
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+AppDataSource.initialize()
+.then(() => {
+  console.log('Data Source has been initialized!');
+})
+.catch((err) => {
+  console.error('Error during Data Source initialization', err);
+});
 
 app.get('/rest', (req: Request, res: Response) => {
   res.json({ message: 'Hello from REST endpoint!' });
@@ -29,9 +42,15 @@ const resolvers = {
 };
 
 // Apollo Server Setup
-const apolloServer = new ApolloServer({ typeDefs, resolvers });
 
 async function startServer() {
+  const schema = await buildSchema({
+    resolvers: [AccountResolvers],
+    authChecker: customAuthChecker,
+  });
+
+  const apolloServer = new ApolloServer({ schema });
+
   // Start Apollo Server
   await apolloServer.start();
 
